@@ -1,188 +1,176 @@
-# 🛡️ macOS Privileges Monitor
+# SAP Privileges Monitor
 
-A lightweight **Monitor & Alert** system for macOS. Instead of blocking administrative access and becoming a bottleneck for schoolwork or development, this system allows users to elevate their privileges while ensuring you get an alert the moment it happens.
+Get instant notifications when admin privileges are granted or revoked on your Mac.
 
-> [!IMPORTANT]
-> This solution is not a foolproof security execution (and neither is the [SAP Privileges app](https://github.com/SAP/macOS-enterprise-privileges) itself). If a user has admin rights, they technically have the power to disable these monitors. This setup is designed for a **"Trust but Verify"** environment—it provides visibility and reduces friction, but it requires a baseline of trust.
-> 
-> If you are looking for a more "complete" lockdown, you can follow [this guide on locking down macOS settings](https://gordonbeeming.com/blog/2025-11-22/locking-down-settings-the-real-way). However, be aware that the higher level of control comes with its own administrative headaches.
+## What It Does
 
-## 🚀 How it Works
+Integrates with [SAP Privileges](https://github.com/SAP/macOS-enterprise-privileges) to send real-time notifications to [ntfy.sh](https://ntfy.sh) whenever you toggle admin privileges. Perfect for monitoring your own Mac or keeping tabs on family devices.
 
-This monitoring system uses **two complementary approaches**:
+**Features:**
+- Instant notifications via ntfy.sh (or any webhook)
+- Touch ID authentication required
+- Reason required (10-250 characters)
+- Time limits (20 min default, 60 min max)
+- JSON payload with machine name, user, state, reason, and timestamp
 
-### 1. SAP Privileges Integration (Recommended)
-* **Direct Webhook:** SAP Privileges calls `privileges_post_change.sh` directly when a user's privileges change
-* **Immediate Alerts:** No log streaming needed—notifications sent instantly via webhook
-* **Reliable:** Uses the official SAP Privileges `PostChangeExecutablePath` mechanism
-* **Structured Data:** Includes user, machine, state, timestamp, and optional reason
+## Prerequisites
 
-### 2. Sudo Monitoring (Fallback/Additional)
-* **Log Stream Monitor:** A daemon (`privileges_sudo_monitor.sh`) monitors system logs for unauthorized sudo attempts
-* **Event Queue:** Detected events are stored as JSON files in `/Users/Shared/privileges_queue`
-* **Periodic Sync:** Another daemon (`privileges_sync_simple.sh`) runs every 5 minutes to send queued events
-* **Offline Queue:** Events are retained until internet connectivity is restored
+1. **SAP Privileges app** - [Download here](https://github.com/SAP/macOS-enterprise-privileges/releases)
+2. **ntfy.sh topic** - Create one at [ntfy.sh](https://ntfy.sh) (free)
 
-## 📊 JSON Schema
+## Quick Setup
 
-```json
-{
-  "machine": "blastoise",
-  "user": "gordonbeeming",
-  "state": "admin|user|unauthorized_sudo",
-  "message": "User promoted to Administrator",
-  "reason": "Installing development tools",
-  "time": "2026-01-28T12:15:00Z"
-}
-```
+### 1. Configure
 
-## 🛠️ Setup
-
-### 1. Prerequisites
-
-Ensure you have the [SAP Privileges app](https://github.com/SAP/macOS-enterprise-privileges) installed.
-
-### 2. Configuration
-
-Copy the template and configure your settings:
+Copy the template and add your ntfy.sh details:
 
 ```bash
 cp privileges_config.env.template privileges_config.env
 ```
 
-Edit `privileges_config.env` and add your `POST_URL` and `AUTH_TOKEN`:
+Edit `privileges_config.env`:
 
 ```bash
-# Your ntfy.sh or webhook URL
+# Your ntfy.sh topic URL
 POST_URL="https://ntfy.sh/your_topic_here"
 
-# Your ntfy.sh access token (Bearer token)
+# Your ntfy.sh access token (if using auth)
 AUTH_TOKEN="tk_your_token_here"
 
-# The name used in notifications
+# Machine name for notifications (auto-detected by default)
 MACHINE_NAME=$(scutil --get LocalHostName)
 ```
 
-### 3. Installation
-
-Run the setup script:
+### 2. Install
 
 ```bash
-chmod +x setup.sh
 ./setup.sh
+./install_profile.sh
 ```
 
-The script will:
-- Create necessary folders in `/usr/local/bin/privileges-monitor/`
-- Copy and install all scripts
-- Register the LaunchDaemons for sudo monitoring
-- Copy the configuration profile to `~/Downloads/PrivilegesMonitor.mobileconfig`
-- Restart the Privileges app automatically
+The setup script installs the notification script, and the profile installer:
+1. Copies the configuration profile to your Downloads
+2. Opens it in System Settings
+3. Prompts you to install it
+4. Restarts SAP Privileges
 
-### 4. Install the Configuration Profile (CRITICAL STEP!)
+**Important:** You must install the configuration profile in System Settings when prompted. This is what enables Touch ID, reason prompts, and the notification hook.
 
-**The configuration profile MUST be manually installed** for the webhook integration to work:
+### 3. Test
 
-1. Open `~/Downloads/PrivilegesMonitor.mobileconfig` (copied there by setup.sh)
-2. Double-click to open it
-3. Go to **System Settings → Privacy & Security → Profiles**
-4. Find **"Privileges Monitor Configuration"** and click Install
-5. Authenticate with your admin password when prompted
+1. Open SAP Privileges (menu bar icon)
+2. Click to toggle admin privileges
+3. You should see:
+   - Touch ID authentication
+   - Reason dialog
+   - Time duration selector
+4. Check your ntfy.sh topic for the notification!
 
-**Without this step, the immediate webhook notifications won't work!** You'll only get delayed notifications from the log monitor.
+## How It Works
 
-### 5. Verification
+```
+User toggles privileges
+       ↓
+SAP Privileges prompts for Touch ID + reason
+       ↓
+On success, calls privileges_post_change.sh
+       ↓
+Script formats notification with JSON data
+       ↓
+Sends to ntfy.sh via webhook
+       ↓
+You get instant notification!
+```
 
-To verify everything is working:
+## Notification Format
 
-1. **Check daemons are running:**
-   ```bash
-   sudo launchctl list | grep gordonbeeming
-   ```
-   You should see:
-   - `com.gordonbeeming.privileges.sync` - Syncs queued sudo events every 5 minutes
-   - `com.gordonbeeming.sudo.monitor` - Monitors for unauthorized sudo attempts
+```json
+{
+  "machine": "macbook-pro",
+  "user": "gordon",
+  "state": "admin",
+  "message": "User promoted to Administrator",
+  "reason": "Installing Docker Desktop",
+  "time": "2026-01-29T12:30:00Z"
+}
+```
 
-2. **Test privilege changes:**
-   - Click the Privileges icon in your menu bar
-   - You'll be prompted for:
-     - Touch ID authentication
-     - A reason (10-250 characters)
-     - Time duration (default 20 min, max 60 min)
-   - Grant yourself admin rights
-   - Check your ntfy.sh notifications - you should receive an immediate alert with the reason!
+The ntfy.sh notification shows:
+```
+Title: Privilege Change: macbook-pro
+Body:
+  Machine: macbook-pro
+  User: gordon
+  Status: User promoted to Administrator
+  Reason: Installing Docker Desktop
+  Time: 2026-01-29T12:30:00Z
+```
 
-3. **Check logs:**
-   ```bash
-   log show --predicate 'process == "privileges-monitor"' --last 5m
-   ```
+## Files
 
-## 🔧 Configuration Details
+- **`com.sap.privileges.config.mobileconfig`** - Configuration profile for SAP Privileges
+- **`privileges_post_change.sh`** - Notification script called by SAP Privileges
+- **`privileges_config.env.template`** - Template for your ntfy.sh configuration
+- **`setup.sh`** - Installs the notification script
+- **`install_profile.sh`** - Guides you through profile installation
 
-The setup includes:
+## Troubleshooting
 
-- **Touch ID Required:** Users must authenticate with Touch ID (or password if unavailable)
-- **Reason Required:** Users must provide a reason (10-250 characters) for requesting admin rights
-- **Time Limits:** Default 20 minutes, maximum 60 minutes (user can choose)
-- **Webhook Integration:** Direct integration with SAP Privileges for immediate notifications
-- **Sudo Monitoring:** Continuous monitoring for unauthorized sudo attempts
+### No Touch ID or reason prompt?
 
----
+The configuration profile isn't installed:
 
-## 📝 Troubleshooting
-
-**Quick Check:** Run the automated troubleshooting script:
 ```bash
-./troubleshoot.sh
+# Check if installed
+sudo profiles show | grep -A 5 "SAP Privileges"
+
+# If not found, run install_profile.sh again
+./install_profile.sh
 ```
 
-This will check:
-- Configuration profile installation
-- Installed scripts
-- Daemon status
-- Event queue
-- ntfy.sh connectivity
-- Recent logs
+### No notifications?
 
-### Common Issues
+Check the script is installed and configured:
 
-* **No notifications received?** 
-  - Check that your `AUTH_TOKEN` is correct in `privileges_config.env`
-  - Verify the scripts were copied: `ls -la /usr/local/bin/privileges-monitor/`
-  - Check logs: `log show --predicate 'process == "privileges-monitor"' --last 5m`
+```bash
+# Verify script exists
+ls -la /usr/local/bin/privileges-monitor/
 
-* **Privileges app not prompting for Touch ID or reason?**
-  - **Most likely cause:** The configuration profile wasn't installed properly
-  - Check if it's installed: `sudo profiles show | grep -A 20 "corp.sap.privileges"`
-  - If not installed, go to System Settings → Privacy & Security → Profiles
-  - Install the "Privileges Monitor Configuration" profile
-  - If you don't see it there, reinstall from `~/Downloads/PrivilegesMonitor.mobileconfig`
-  - Restart the Privileges app: `killall PrivilegesAgent Privileges; open -a Privileges`
+# Check config
+cat /usr/local/bin/privileges-monitor/privileges_config.env
 
-* **No immediate notifications when changing privileges?**
-  - This means the PostChangeExecutablePath isn't being called
-  - The configuration profile is NOT installed or not loaded
-  - Verify: `sudo profiles show | grep "PostChangeExecutablePath"`
-  - If you see the path, restart Privileges daemons:
-    ```bash
-    sudo launchctl kickstart -k system/corp.sap.privileges.daemon
-    killall PrivilegesAgent Privileges
-    ```
-  - If you don't see it, the profile isn't installed - go back to step 4
+# Test ntfy.sh connectivity
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     -d "Test message" \
+     https://ntfy.sh/your_topic
+```
 
-* **Permission Denied?** 
-  - Ensure the terminal has **Full Disk Access** in System Settings to allow `log stream` to read system logs
+Check system logs:
 
-* **Manual sync test:** 
-  ```bash
-  sudo /usr/local/bin/privileges-monitor/privileges_sync.sh
-  ```
+```bash
+log show --predicate 'subsystem == "corp.sap.privileges"' --last 5m
+log show --predicate 'process == "privileges-monitor"' --last 5m
+```
 
-## 📁 Files Overview
+### Profile won't install?
 
-- **`privileges_post_change.sh`** - Webhook called by SAP Privileges on privilege changes
-- **`privileges_sync.sh`** - Syncs queued sudo events to ntfy.sh with nice formatting
-- **`privileges_sudo_monitor.sh`** - Monitors system logs for unauthorized sudo attempts
-- **`com.sap.privileges.webhook.mobileconfig`** - SAP Privileges configuration profile (Touch ID, reason, timeouts, webhook)
-- **`com.gordonbeeming.privileges.sync.plist`** - LaunchDaemon for syncing queued events
-- **`com.gordonbeeming.sudo.monitor.plist`** - LaunchDaemon for sudo monitoring
+Make sure you're installing it as a **System** profile, not a User profile. When you open the `.mobileconfig` file, it should take you to System Settings > General > Device Management (or Profiles).
+
+## Uninstall
+
+Remove the configuration profile:
+1. System Settings > General > Device Management
+2. Select "SAP Privileges Configuration"
+3. Click Remove
+
+Remove the scripts:
+
+```bash
+sudo rm -rf /usr/local/bin/privileges-monitor/
+```
+
+## Security Note
+
+This is a **"Trust but Verify"** solution. Users with admin privileges can technically disable these notifications. It's designed for environments where you want visibility without creating friction—perfect for personal Macs or family devices, not for strict enterprise lockdown.
+
+For more robust lockdown options, see [this guide](https://gordonbeeming.com/blog/2025-11-22/locking-down-settings-the-real-way).

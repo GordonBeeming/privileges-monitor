@@ -1,46 +1,54 @@
 #!/bin/bash
-# Quick script to install the Privileges Monitor configuration profile
+# Install SAP Privileges configuration profile
 
-echo "🔧 Installing Privileges Monitor Configuration Profile..."
+PROFILE_SOURCE="$(pwd)/com.sap.privileges.config.mobileconfig"
+PROFILE_DEST="$HOME/Downloads/SAPPrivilegesConfig.mobileconfig"
+
+echo "📄 Installing SAP Privileges Configuration Profile"
 echo ""
 
-PROFILE_PATH="$HOME/Downloads/PrivilegesMonitor.mobileconfig"
-
-if [ ! -f "$PROFILE_PATH" ]; then
-    echo "❌ Profile not found at $PROFILE_PATH"
-    echo "   Run ./setup.sh first to copy the profile to Downloads"
+# Check if profile exists
+if [ ! -f "$PROFILE_SOURCE" ]; then
+    echo "❌ Profile not found: $PROFILE_SOURCE"
     exit 1
 fi
 
-echo "📄 Profile location: $PROFILE_PATH"
+# Copy to Downloads
+cp "$PROFILE_SOURCE" "$PROFILE_DEST"
+
+echo "Profile copied to: $PROFILE_DEST"
 echo ""
-echo "Opening the profile for installation..."
-echo ""
-echo "Next steps:"
-echo "1. The profile will open in System Settings"
-echo "2. Click 'Install' or 'Install Profile'"
-echo "3. Enter your admin password when prompted"
-echo "4. Restart the Privileges app"
+echo "Opening profile for installation..."
 echo ""
 
 # Open the profile
-open "$PROFILE_PATH"
+open "$PROFILE_DEST"
 
-echo "⏳ Waiting for you to install the profile..."
-echo "   (Press Enter after you've installed it)"
-read
+echo "📝 Next steps:"
+echo "   1. The profile will open in System Settings"
+echo "   2. Click 'Install' (you may need to scroll down)"
+echo "   3. Enter your admin password when prompted"
+echo "   4. Press Enter here when done..."
+echo ""
+read -p "Press Enter after installing the profile: "
 
 echo ""
-echo "🔄 Restarting Privileges components..."
-sudo launchctl kickstart -k system/corp.sap.privileges.daemon 2>/dev/null
-killall PrivilegesAgent 2>/dev/null
-killall Privileges 2>/dev/null
+echo "🔄 Restarting SAP Privileges..."
+sudo launchctl kickstart -k system/corp.sap.privileges.daemon 2>/dev/null || true
+killall PrivilegesAgent 2>/dev/null || true
+killall Privileges 2>/dev/null || true
+
 sleep 2
-open -a Privileges 2>/dev/null
 
 echo ""
-echo "✅ Done! Test by:"
-echo "   1. Click the Privileges app"
-echo "   2. You should be prompted for Touch ID + a reason"
-echo "   3. Check ntfy.sh for immediate notification!"
+echo "✅ Setup complete!"
+echo ""
+echo "🧪 Test it:"
+echo "   1. Open the Privileges app (menu bar icon)"
+echo "   2. Click to toggle admin privileges"
+echo "   3. You should see:"
+echo "      • Touch ID authentication prompt"
+echo "      • Reason input dialog (10-250 characters)"
+echo "      • Time duration selector"
+echo "   4. Check your ntfy.sh topic for the notification!"
 echo ""
