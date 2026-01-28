@@ -1,93 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>PayloadContent</key>
-	<array>
-		<dict>
-			<key>PayloadContent</key>
+	<dict>
+		<key>PayloadContent</key>
+		<array>
 			<dict>
-				<key>corp.sap.privileges</key>
+				<key>PayloadContent</key>
 				<dict>
-					<key>Forced</key>
-					<array>
-						<dict>
-							<key>mcx_preference_settings</key>
+					<key>corp.sap.privileges</key>
+					<dict>
+						<key>Forced</key>
+						<array>
 							<dict>
-								<!-- Call custom script on privilege change -->
-								<key>PostChangeExecutablePath</key>
-								<string>/usr/local/bin/privileges-monitor/privileges_post_change.sh</string>
-								
-								<!-- Pass the reason to the script -->
-								<key>PassReasonToExecutable</key>
-								<true/>
-								
-								<!-- Require authentication (Touch ID/Password) -->
-								<key>RequireAuthentication</key>
-								<true/>
-								
-								<!-- Allow CLI biometric authentication -->
-								<key>AllowCLIBiometricAuthentication</key>
-								<true/>
-								
-								<!-- Require a reason -->
-								<key>ReasonRequired</key>
-								<true/>
-								<key>ReasonMinLength</key>
-								<integer>10</integer>
-								<key>ReasonMaxLength</key>
-								<integer>250</integer>
-								
-								<!-- Expiration: max 60 min, default 20 min -->
-								<key>ExpirationIntervalMax</key>
-								<integer>60</integer>
-								<key>MaxIntervalInitial</key>
-								<integer>20</integer>
+								<key>mcx_preference_settings</key>
+								<dict>
+									<!-- Call custom script on privilege change -->
+									<key>PostChangeExecutablePath</key>
+									<string>/usr/local/bin/privileges-monitor/privileges_post_change.sh</string>
+
+									<!-- Pass the reason to the script -->
+									<key>PassReasonToExecutable</key>
+									<true />
+
+									<!-- Require authentication (Touch ID/Password) -->
+									<key>RequireAuthentication</key>
+									<true />
+
+									<!-- Allow CLI biometric authentication -->
+									<key>AllowCLIBiometricAuthentication</key>
+									<true />
+
+									<!-- Require a reason -->
+									<key>ReasonRequired</key>
+									<true />
+									<key>ReasonMinLength</key>
+									<integer>10</integer>
+									<key>ReasonMaxLength</key>
+									<integer>250</integer>
+
+									<!-- Expiration: max 60 min, default 20 min -->
+									<key>ExpirationIntervalMax</key>
+									<integer>60</integer>
+									<key>MaxIntervalInitial</key>
+									<integer>20</integer>
+
+									<key>RevokePrivilegesAtLogin</key>
+									<true />
+									<key>EnableSystemExtension</key>
+									<true />
+								</dict>
 							</dict>
-						</dict>
-					</array>
+						</array>
+					</dict>
 				</dict>
+				<key>PayloadDescription</key>
+				<string>Configures SAP Privileges with authentication, reason requirement, and notifications</string>
+				<key>PayloadDisplayName</key>
+				<string>SAP Privileges Configuration</string>
+				<key>PayloadEnabled</key>
+				<true />
+				<key>PayloadIdentifier</key>
+				<string>com.gordonbeeming.privileges.config.36132147</string>
+				<key>PayloadOrganization</key>
+				<string>Gordon Beeming</string>
+				<key>PayloadType</key>
+				<string>com.apple.ManagedClient.preferences</string>
+				<key>PayloadUUID</key>
+				<string>36132147-235E-4663-ADA8-2664C67C4DD2</string>
+				<key>PayloadVersion</key>
+				<integer>1</integer>
 			</dict>
+		</array>
 		<key>PayloadDescription</key>
 		<string>Configures SAP Privileges with authentication, reason requirement, and notifications</string>
 		<key>PayloadDisplayName</key>
 		<string>SAP Privileges Configuration</string>
 		<key>PayloadEnabled</key>
-		<true/>
+		<true />
 		<key>PayloadIdentifier</key>
-		<string>com.gordonbeeming.privileges.config.36132147</string>
-			<key>PayloadOrganization</key>
-			<string>Gordon Beeming</string>
-			<key>PayloadType</key>
-			<string>com.apple.ManagedClient.preferences</string>
-			<key>PayloadUUID</key>
-			<string>36132147-235E-4663-ADA8-2664C67C4DD2</string>
-			<key>PayloadVersion</key>
-			<integer>1</integer>
-		</dict>
-	</array>
-	<key>PayloadDescription</key>
-	<string>Configures SAP Privileges with authentication, reason requirement, and notifications</string>
-	<key>PayloadDisplayName</key>
-	<string>SAP Privileges Configuration</string>
-	<key>PayloadEnabled</key>
-	<true/>
-	<key>PayloadIdentifier</key>
-	<string>com.gordonbeeming.privileges.config</string>
-	<key>PayloadOrganization</key>
-	<string>Gordon Beeming</string>
-	<key>PayloadRemovalDisallowed</key>
-	<false/>
-	<key>PayloadScope</key>
-	<string>System</string>
-	<key>PayloadType</key>
-	<string>Configuration</string>
-	<key>PayloadUUID</key>
-	<string>50870D16-7AAD-478B-BFFE-BED09499F7E0</string>
-	<key>PayloadVersion</key>
-	<integer>1</integer>
-</dict>
+		<string>com.gordonbeeming.privileges.config</string>
+		<key>PayloadOrganization</key>
+		<string>Gordon Beeming</string>
+		<key>PayloadRemovalDisallowed</key>
+		<false />
+		<key>PayloadScope</key>
+		<string>System</string>
+		<key>PayloadType</key>
+		<string>Configuration</string>
+		<key>PayloadUUID</key>
+		<string>50870D16-7AAD-478B-BFFE-BED09499F7E0</string>
+		<key>PayloadVersion</key>
+		<integer>1</integer>
+	</dict>
 </plist>
-
-
-

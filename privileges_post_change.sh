@@ -10,6 +10,12 @@ REASON="${3:-}"
 MACHINE_NAME=$(scutil --get LocalHostName)
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+# Validate required data - don't send if missing critical info
+if [[ -z "$MACHINE_NAME" ]] || [[ -z "$USERNAME" ]] || [[ -z "$STATE" ]]; then
+    logger -t "privileges-monitor" "Skipping notification - missing required data (machine: '$MACHINE_NAME', user: '$USERNAME', state: '$STATE')"
+    exit 0
+fi
+
 # Determine message and emoji based on state
 if [[ "$STATE" == "admin" ]]; then
     MSG="User promoted to Administrator"
