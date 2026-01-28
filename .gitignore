@@ -1,0 +1,10 @@
+# Local config containing private URLs
+privileges_config.env
+
+# macOS system files
+.DS_Store
+
+# Logs
+*.log
+*.out
+*.err
