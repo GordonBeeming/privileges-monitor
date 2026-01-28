@@ -65,21 +65,33 @@ MACHINE_NAME=$(scutil --get LocalHostName)
 
 ### 3. Installation
 
-The `setup.sh` script is **fully automated** and idempotent. It will:
-- Create necessary folders in `/usr/local/bin/privileges-monitor/`
-- Copy and install all scripts
-- Register the LaunchDaemons for sudo monitoring
-- Install the SAP Privileges configuration profile
-- Restart the Privileges app automatically
+Run the setup script:
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
 
-That's it! No manual steps required.
+The script will:
+- Create necessary folders in `/usr/local/bin/privileges-monitor/`
+- Copy and install all scripts
+- Register the LaunchDaemons for sudo monitoring
+- Copy the configuration profile to `~/Downloads/PrivilegesMonitor.mobileconfig`
+- Restart the Privileges app automatically
 
-### 4. Verification
+### 4. Install the Configuration Profile (CRITICAL STEP!)
+
+**The configuration profile MUST be manually installed** for the webhook integration to work:
+
+1. Open `~/Downloads/PrivilegesMonitor.mobileconfig` (copied there by setup.sh)
+2. Double-click to open it
+3. Go to **System Settings → Privacy & Security → Profiles**
+4. Find **"Privileges Monitor Configuration"** and click Install
+5. Authenticate with your admin password when prompted
+
+**Without this step, the immediate webhook notifications won't work!** You'll only get delayed notifications from the log monitor.
+
+### 5. Verification
 
 To verify everything is working:
 
@@ -119,14 +131,44 @@ The setup includes:
 
 ## 📝 Troubleshooting
 
+**Quick Check:** Run the automated troubleshooting script:
+```bash
+./troubleshoot.sh
+```
+
+This will check:
+- Configuration profile installation
+- Installed scripts
+- Daemon status
+- Event queue
+- ntfy.sh connectivity
+- Recent logs
+
+### Common Issues
+
 * **No notifications received?** 
   - Check that your `AUTH_TOKEN` is correct in `privileges_config.env`
   - Verify the scripts were copied: `ls -la /usr/local/bin/privileges-monitor/`
   - Check logs: `log show --predicate 'process == "privileges-monitor"' --last 5m`
 
 * **Privileges app not prompting for Touch ID or reason?**
-  - Verify the configuration profile is installed: `ls -la "/Library/Managed Preferences/corp.sap.privileges.plist"`
+  - **Most likely cause:** The configuration profile wasn't installed properly
+  - Check if it's installed: `sudo profiles show | grep -A 20 "corp.sap.privileges"`
+  - If not installed, go to System Settings → Privacy & Security → Profiles
+  - Install the "Privileges Monitor Configuration" profile
+  - If you don't see it there, reinstall from `~/Downloads/PrivilegesMonitor.mobileconfig`
   - Restart the Privileges app: `killall PrivilegesAgent Privileges; open -a Privileges`
+
+* **No immediate notifications when changing privileges?**
+  - This means the PostChangeExecutablePath isn't being called
+  - The configuration profile is NOT installed or not loaded
+  - Verify: `sudo profiles show | grep "PostChangeExecutablePath"`
+  - If you see the path, restart Privileges daemons:
+    ```bash
+    sudo launchctl kickstart -k system/corp.sap.privileges.daemon
+    killall PrivilegesAgent Privileges
+    ```
+  - If you don't see it, the profile isn't installed - go back to step 4
 
 * **Permission Denied?** 
   - Ensure the terminal has **Full Disk Access** in System Settings to allow `log stream` to read system logs
@@ -141,6 +183,6 @@ The setup includes:
 - **`privileges_post_change.sh`** - Webhook called by SAP Privileges on privilege changes
 - **`privileges_sync.sh`** - Syncs queued sudo events to ntfy.sh with nice formatting
 - **`privileges_sudo_monitor.sh`** - Monitors system logs for unauthorized sudo attempts
-- **`com.sap.privileges.webhook.plist`** - SAP Privileges configuration (Touch ID, reason, timeouts, webhook)
+- **`com.sap.privileges.webhook.mobileconfig`** - SAP Privileges configuration profile (Touch ID, reason, timeouts, webhook)
 - **`com.gordonbeeming.privileges.sync.plist`** - LaunchDaemon for syncing queued events
 - **`com.gordonbeeming.sudo.monitor.plist`** - LaunchDaemon for sudo monitoring

@@ -34,7 +34,7 @@ sudo launchctl load "$DAEMON_DIR/com.gordonbeeming.sudo.monitor.plist"
 
 # Copy configuration profile to user's Downloads for manual installation
 echo "📄 Copying Privileges configuration profile to ~/Downloads..."
-cp "$SOURCE_DIR/com.sap.privileges.webhook.plist" "$HOME/Downloads/PrivilegesMonitor.mobileconfig"
+cp "$SOURCE_DIR/com.sap.privileges.webhook.mobileconfig" "$HOME/Downloads/PrivilegesMonitor.mobileconfig"
 
 # Clean up old scripts if they exist
 sudo rm -f "$BIN_DIR/privileges_sync_simple.sh" 2>/dev/null

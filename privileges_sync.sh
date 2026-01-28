@@ -2,12 +2,21 @@
 source /usr/local/bin/privileges-monitor/privileges_config.env
 QUEUE_DIR="/Users/Shared/privileges_queue"
 
+# Ensure queue directory exists
+mkdir -p "$QUEUE_DIR"
+
 # Check for internet
 ping -c 1 1.1.1.1 > /dev/null 2>&1
-if [ $? -ne 0 ]; then exit 1; fi
+if [ $? -ne 0 ]; then 
+    logger -t "privileges-monitor" "No internet connection, will retry later"
+    exit 0
+fi
 
 for file in "$QUEUE_DIR"/*.json; do
     [ -e "$file" ] || continue
+    
+    # Log that we're processing a file
+    logger -t "privileges-monitor" "Processing queued event: $file"
     
     # Parse JSON fields
     machine=$(grep -o '"machine":"[^"]*"' "$file" | cut -d'"' -f4)
@@ -70,8 +79,12 @@ Time: $timestamp"
     # Only delete file if HTTP response is 2xx (success)
     if [[ "$HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
         rm "$file"
-        logger -t "privileges-monitor" "Successfully synced event for $user ($state)"
+        logger -t "privileges-monitor" "Successfully synced event for $user ($state) - HTTP $HTTP_CODE"
     else
-        logger -t "privileges-monitor" "Failed to sync event (HTTP $HTTP_CODE): $file"
+        RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+        logger -t "privileges-monitor" "Failed to sync event (HTTP $HTTP_CODE): $file - Response: $RESPONSE_BODY"
     fi
 done
+
+# Log completion
+logger -t "privileges-monitor" "Sync cycle completed"
