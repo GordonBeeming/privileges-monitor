@@ -9,21 +9,19 @@ A lightweight **Monitor & Alert** system for macOS. Instead of blocking administ
 
 ## 🚀 How it Works
 
-1. **The Log Monitor:** A background daemon (`privileges_sudo_monitor.sh`) runs as root and streams system logs in real-time. It uses specific predicates to catch:
-* **SAP Privileges Events:** "User now has administrator privileges" or "standard user privileges".
-* **Unauthorized Sudo:** Any attempt by a non-sudoer to use the `sudo` command.
+This monitoring system uses **two complementary approaches**:
 
+### 1. SAP Privileges Integration (Recommended)
+* **Direct Webhook:** SAP Privileges calls `privileges_post_change.sh` directly when a user's privileges change
+* **Immediate Alerts:** No log streaming needed—notifications sent instantly via webhook
+* **Reliable:** Uses the official SAP Privileges `PostChangeExecutablePath` mechanism
+* **Structured Data:** Includes user, machine, state, timestamp, and optional reason
 
-2. **The Event Queue:** When an event is detected, the monitor drops a JSON "incident" file into `/Users/Shared/privileges_queue`.
-3. **The Connectivity Check:** A second LaunchDaemon (`privileges_sync_simple.sh`) wakes up every 5 minutes and pings Cloudflare DNS (**1.1.1.1**) to check for internet connectivity.
-4. **The Alert:** If online, it drains the queue by POSTing the JSON events to your configured **ntfy.sh** endpoint and deletes the processed files.
-
-## 📂 Sync Options
-
-Depending on your backend, you can choose which sync script to use in your `.plist`:
-
-* **`privileges_sync.sh` (Recommended for ntfy.sh):** Parses the JSON locally to inject "Pretty" headers like Titles, Emojis, and Priorities (Urgent for sudo, High for Admin).
-* **`privileges_sync_simple.sh` (Best for Logic Apps/API):** Sends the raw JSON payload as-is. Best if you want to handle formatting and logic on the server side.
+### 2. Sudo Monitoring (Fallback/Additional)
+* **Log Stream Monitor:** A daemon (`privileges_sudo_monitor.sh`) monitors system logs for unauthorized sudo attempts
+* **Event Queue:** Detected events are stored as JSON files in `/Users/Shared/privileges_queue`
+* **Periodic Sync:** Another daemon (`privileges_sync_simple.sh`) runs every 5 minutes to send queued events
+* **Offline Queue:** Events are retained until internet connectivity is restored
 
 ## 📊 JSON Schema
 
@@ -33,9 +31,9 @@ Depending on your backend, you can choose which sync script to use in your `.pli
   "user": "gordonbeeming",
   "state": "admin|user|unauthorized_sudo",
   "message": "User promoted to Administrator",
-  "time": "Wed Jan 28 22:15:00 AEST 2026"
+  "reason": "Installing development tools",
+  "time": "2026-01-28T12:15:00Z"
 }
-
 ```
 
 ## 🛠️ Setup
@@ -50,33 +48,99 @@ Copy the template and configure your settings:
 
 ```bash
 cp privileges_config.env.template privileges_config.env
-
 ```
 
-Edit `privileges_config.env` and add your `POST_URL`.
+Edit `privileges_config.env` and add your `POST_URL` and `AUTH_TOKEN`:
+
+```bash
+# Your ntfy.sh or webhook URL
+POST_URL="https://ntfy.sh/your_topic_here"
+
+# Your ntfy.sh access token (Bearer token)
+AUTH_TOKEN="tk_your_token_here"
+
+# The name used in notifications
+MACHINE_NAME=$(scutil --get LocalHostName)
+```
 
 ### 3. Installation
 
-The `setup.sh` script is idempotent. It will create the necessary folders in `/usr/local/bin/privileges-monitor/`, copy the scripts, and register the LaunchDaemons.
+The `setup.sh` script is **fully automated** and idempotent. It will:
+- Create necessary folders in `/usr/local/bin/privileges-monitor/`
+- Copy and install all scripts
+- Register the LaunchDaemons for sudo monitoring
+- Install the SAP Privileges configuration profile
+- Restart the Privileges app automatically
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
-
 ```
+
+That's it! No manual steps required.
 
 ### 4. Verification
 
-Since this version uses **Log Streaming**, you do **not** need to register a script inside the Privileges App settings (which often triggers TCC permission errors). To verify:
+To verify everything is working:
 
-1. Toggle your privileges in the menu bar.
-2. Check the queue: `ls /Users/Shared/privileges_queue`
-3. Verify the Daemons are running: `sudo launchctl list | grep gordonbeeming`
+1. **Check daemons are running:**
+   ```bash
+   sudo launchctl list | grep gordonbeeming
+   ```
+   You should see:
+   - `com.gordonbeeming.privileges.sync` - Syncs queued sudo events every 5 minutes
+   - `com.gordonbeeming.sudo.monitor` - Monitors for unauthorized sudo attempts
+
+2. **Test privilege changes:**
+   - Click the Privileges icon in your menu bar
+   - You'll be prompted for:
+     - Touch ID authentication
+     - A reason (10-250 characters)
+     - Time duration (default 20 min, max 60 min)
+   - Grant yourself admin rights
+   - Check your ntfy.sh notifications - you should receive an immediate alert with the reason!
+
+3. **Check logs:**
+   ```bash
+   log show --predicate 'process == "privileges-monitor"' --last 5m
+   ```
+
+## 🔧 Configuration Details
+
+The setup includes:
+
+- **Touch ID Required:** Users must authenticate with Touch ID (or password if unavailable)
+- **Reason Required:** Users must provide a reason (10-250 characters) for requesting admin rights
+- **Time Limits:** Default 20 minutes, maximum 60 minutes (user can choose)
+- **Webhook Integration:** Direct integration with SAP Privileges for immediate notifications
+- **Sudo Monitoring:** Continuous monitoring for unauthorized sudo attempts
 
 ---
 
 ## 📝 Troubleshooting
 
-* **No files in queue?** Ensure the monitor has started: `sudo launchctl load /Library/LaunchDaemons/com.gordonbeeming.sudo.monitor.plist`.
-* **Permission Denied?** Ensure the terminal has **Full Disk Access** in System Settings to allow the `log stream` to read system logs.
-* **Manual Sync Test:** Run `sudo /usr/local/bin/privileges-monitor/privileges_sync_simple.sh` to force an immediate upload.
+* **No notifications received?** 
+  - Check that your `AUTH_TOKEN` is correct in `privileges_config.env`
+  - Verify the scripts were copied: `ls -la /usr/local/bin/privileges-monitor/`
+  - Check logs: `log show --predicate 'process == "privileges-monitor"' --last 5m`
+
+* **Privileges app not prompting for Touch ID or reason?**
+  - Verify the configuration profile is installed: `ls -la "/Library/Managed Preferences/corp.sap.privileges.plist"`
+  - Restart the Privileges app: `killall PrivilegesAgent Privileges; open -a Privileges`
+
+* **Permission Denied?** 
+  - Ensure the terminal has **Full Disk Access** in System Settings to allow `log stream` to read system logs
+
+* **Manual sync test:** 
+  ```bash
+  sudo /usr/local/bin/privileges-monitor/privileges_sync.sh
+  ```
+
+## 📁 Files Overview
+
+- **`privileges_post_change.sh`** - Webhook called by SAP Privileges on privilege changes
+- **`privileges_sync.sh`** - Syncs queued sudo events to ntfy.sh with nice formatting
+- **`privileges_sudo_monitor.sh`** - Monitors system logs for unauthorized sudo attempts
+- **`com.sap.privileges.webhook.plist`** - SAP Privileges configuration (Touch ID, reason, timeouts, webhook)
+- **`com.gordonbeeming.privileges.sync.plist`** - LaunchDaemon for syncing queued events
+- **`com.gordonbeeming.sudo.monitor.plist`** - LaunchDaemon for sudo monitoring
