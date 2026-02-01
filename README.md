@@ -170,4 +170,4 @@ sudo rm -rf /usr/local/bin/privileges-monitor/
 
 This is a **"Trust but Verify"** solution. Users with admin privileges can technically disable these notifications. It's designed for environments where you want visibility without creating friction—perfect for personal Macs or family devices, not for strict enterprise lockdown.
 
-For more robust lockdown options, see [this guide](https://gordonbeeming.com/blog/2025-11-22/locking-down-settings-the-real-way).
+For more robust lockdown options that work well with this setup too, see [this guide](https://gordonbeeming.com/blog/2025-11-22/locking-down-settings-the-real-way).
