@@ -8,3 +8,4 @@ privileges_config.env
 *.log
 *.out
 *.err
+Archive.zip

@@ -36,9 +36,6 @@ POST_URL="https://ntfy.sh/your_topic_here"
 
 # Your ntfy.sh access token (if using auth)
 AUTH_TOKEN="tk_your_token_here"
-
-# Machine name for notifications (auto-detected by default)
-MACHINE_NAME=$(scutil --get LocalHostName)
 ```
 
 ### 2. Install
@@ -49,7 +46,7 @@ MACHINE_NAME=$(scutil --get LocalHostName)
 ```
 
 The setup script installs the notification script, and the profile installer:
-1. Copies the configuration profile to your Downloads
+1. Copies the configuration profile to the user's Downloads folder
 2. Opens it in System Settings
 3. Prompts you to install it
 4. Restarts SAP Privileges
